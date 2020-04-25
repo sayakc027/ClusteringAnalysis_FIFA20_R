@@ -1,0 +1,360 @@
+---
+title: <center> <b> Unsupervised Learning - FIFA 20 </b> </center>
+subtitle: <center> <b> Cluster Analysis on EA FIFA 20 Data Set </b> </center>
+author: <center> Sayak Chakraborty | Samreen Gupta | Niharika Gupta | Rohit Thakur </center>
+output:
+  html_document: 
+    code_folding: show
+always_allow_html: yes
+---
+
+<style>
+body {
+        text-align: justify
+     }
+</style>
+
+<style>
+
+h1 {
+  color: blue;
+  font-family: Bookman;
+}
+
+h2 {
+  color: blue;
+  font-family: Bookman;
+}
+
+h3 {
+  color: blue;
+  font-family: Bookman;
+}
+
+h4 {
+  color: blue;
+  font-family: Bookman;
+}
+
+
+</style>
+
+# {.tabset .tabset-fade .tabset-pills}
+
+## **Introduction**
+
+<h1> <b> FIFA </b> </h1>
+
+FIFA, also known as FIFA Football or FIFA Soccer, is a series of association football video games or football simulator, released annually by Electronic Arts under the EA Sports label. Football video games such as Sensible Soccer, Kick Off and Match Day had been developed since the late 1980s and already competitive in the games market when EA Sports announced a football game as the next addition to their EA Sports label. The Guardian called the series "the slickest, most polished and by far the most popular football game around. 
+
+* As of 2011, the FIFA franchise has been localised into 18 languages and available in 51 countries.
+* Listed in Guinness World Records as the best-selling sports video game franchise in the world, by 2018, the FIFA series had sold over 260 million copies. 
+* It is also one of the best-selling video game franchises.
+
+Source: [**Wikipedia**](https://en.wikipedia.org/wiki/FIFA_(video_game_series))
+
+Data Source: [**Kaggle FIFA 20 Data Set**](https://www.kaggle.com/stefanoleone992/fifa-20-complete-player-dataset)
+
+![](FIFA 20 Image.jpg)
+
+</hr>
+
+</br>
+
+<h1> <b> Problem Statement </b> </h1>
+
+
+</br>
+
+## **Data Preparation**
+
+<h3> Packages Used </h3>
+
+We begin by loading the packages that will be required throughout the course of our analysis.
+
+```{r Loading the required packages, results='hide', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
+
+library (tidyverse) 
+library (ggfortify)
+library (qdapTools)
+library (caret)
+library (tidyr)
+library (corrplot)
+library (ggpubr)
+library(ggplot2)
+library(PerformanceAnalytics)
+library(factoextra)
+library(fpc)
+
+```
+
+</br>
+
+<h3> Importing the Data </h3>
+
+The data set was imported into R studio using the below code
+
+```{r read the data, results='hide', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
+fifa_data <- read.csv("fifa-20-complete-player-dataset/players_20.csv", stringsAsFactors = FALSE)
+```
+
+</br>
+
+Displaying the Top 10 Values of the Data 
+
+```{r Display top 10 data, results='hide', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
+
+head(fifa_data, 10)
+
+```
+
+</br>
+
+<h3> Structure of the data </h3>
+
+```{r structure of the data, results='hide', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
+
+str(fifa_data)
+
+```
+
+</br>
+
+<h3> Glimpse of the data </h3>
+
+```{r Glimpse of the data, results='hide', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
+
+glimpse(fifa_data)
+
+```
+
+
+
+<h1> <b> Data Cleaning - Splitting into 2 groups </b> </h1>
+<h1> <b> Goalkeepers and Outflied Players </b> </h1>
+
+If we divide the whole dataset into two groups - Outfield players and Goalkeepers then there would be no Null values as we can assign attributes relevant to a GK and outfield players.
+
+This will also help us to align our model to our problem statement
+
+<h3> Data Set - Goalkeepers </h3>
+
+```{r Goalkeepers, results='hide', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
+data_gk <- subset(x=fifa_data, subset= player_positions == "GK", select = c(sofifa_id,short_name,age,height_cm,weight_kg,overall,potential,value_eur,wage_eur,player_positions,international_reputation,weak_foot,skill_moves,gk_diving,gk_handling,gk_kicking,gk_reflexes,gk_speed,gk_positioning,attacking_crossing,attacking_finishing,attacking_heading_accuracy,attacking_short_passing,attacking_volleys,skill_dribbling,skill_curve,skill_fk_accuracy,skill_long_passing,skill_ball_control,movement_acceleration,movement_sprint_speed,movement_agility,movement_reactions,movement_balance,power_shot_power,power_jumping,power_stamina,power_strength,power_long_shots,mentality_aggression,mentality_interceptions,mentality_positioning,mentality_vision,mentality_penalties,mentality_composure,defending_marking,defending_standing_tackle,defending_sliding_tackle,goalkeeping_diving,goalkeeping_handling,goalkeeping_kicking,goalkeeping_positioning,goalkeeping_reflexes))
+
+```
+
+<h3> Analysing the Goalkeeper Dataset - Head, Dimension and Glimpse </h3>
+
+```{r top 10 goalkeeper dataset, results='hide'}
+head(data_gk)
+dim(data_gk)
+glimpse(data_gk)
+
+```
+
+<h3> Outfield Players Dataset </h3>
+
+```{r Outfield Players Dataset,}
+data_outfield <- subset(x=fifa_data, subset= player_positions != "GK", select = c(sofifa_id,short_name,age,height_cm,weight_kg,overall,potential,value_eur,wage_eur,player_positions,international_reputation,weak_foot,skill_moves,pace,shooting,passing,dribbling,defending,physic,attacking_crossing,attacking_finishing,attacking_heading_accuracy,attacking_short_passing,attacking_volleys,skill_dribbling,skill_curve,skill_fk_accuracy,skill_long_passing,skill_ball_control,movement_acceleration,movement_sprint_speed,movement_agility,movement_reactions,movement_balance,power_shot_power,power_jumping,power_stamina,power_strength,power_long_shots,mentality_aggression,mentality_interceptions,mentality_positioning,mentality_vision,mentality_penalties,mentality_composure,defending_marking,defending_standing_tackle,defending_sliding_tackle,goalkeeping_diving,goalkeeping_handling,goalkeeping_kicking,goalkeeping_positioning,goalkeeping_reflexes))
+
+```
+
+
+<h3> Analysing the Outfield Dataset - Head, Dimension and Glimpse </h3>
+
+```{r Head and Dim of Outfield Players, results='hide'}
+head(data_outfield)
+dim(data_outfield)
+glimpse(data_outfield)
+```
+
+
+<h2> Creating Data Sets for Goalkeepers and Outfield Players by only taking Physical, Strength and Skill Attritubes for clustering </h2>
+
+```{r clustering datasets, results='hide', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
+
+data_gk_int <- subset(data_gk,select = -c(short_name, player_positions, sofifa_id, value_eur, wage_eur, skill_moves))
+
+glimpse (data_gk_int)
+
+data_outfield_int <- subset(data_outfield, select = -c(short_name, player_positions, sofifa_id, value_eur, wage_eur, skill_moves))
+
+glimpse(data_outfield_int)
+
+```
+
+<h2> Scaling the Dataframes </h2>
+
+```{r Scaling the Dataframes, results='hide', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
+
+data_gk_int <- scale(data_gk_int)
+
+data_outfield_int <- scale(data_outfield_int)
+
+set.seed(123456)
+```
+
+
+## **EDA**
+
+
+## **Cluster Analaysis** {.tabset .tabset-fade .tabset-pills}
+
+<h2> Defination </h2>
+Cluster analysis or clustering is the task of grouping a set of objects in such a way that objects in the same group (called a cluster) are more similar (in some sense) to each other than to those in other groups (clusters). It is a main task of exploratory data mining, and a common technique for statistical data analysis, used in many fields, including pattern recognition, image analysis, information retrieval, bioinformatics, data compression, computer graphics and machine learning.
+
+More Information can be found on [**Wikipedia**](https://en.wikipedia.org/wiki/Cluster_analysis)
+
+### K-Means Clustering
+
+<h2> Defination </h2>
+K-Means Clustering is a method of vector quantization, originally from signal processing, that aims to partition n observations into k clusters in which each observation belongs to the cluster with the nearest mean (cluster centers or cluster centroid), serving as a prototype of the cluster. This results in a partitioning of the data space into Voronoi cells. It is popular for cluster analysis in data mining. k-means clustering minimizes within-cluster variances (squared Euclidean distances), but not regular Euclidean distances, which would be the more difficult Weber problem: the mean optimizes squared errors, whereas only the geometric median minimizes Euclidean distances. For instance, Better Euclidean solutions can be found using k-medians and k-medoids.
+
+More Information can be found on [**Wikipedia**](https://en.wikipedia.org/wiki/K-means_clustering)
+
+
+We want to view the result so We can use ```fviz_cluster```. It is function can provide a nice graph of the clusters. Usually, we have more than two dimensions (variables) ```fviz_cluster will perform principal component analysis (PCA)``` and plot the data points according to the first two principal components that explain the majority of the variance.
+
+<h1> <b> Cluster Analysis for Goalkeepers </b> </h1>
+
+```{r Cluster Analysis for Goalkeepers, echo=TRUE, message=FALSE, warning=FALSE, fig.align='center', fig.height=20,fig.width=20}
+gk2 <- kmeans(data_gk_int, centers = 2, nstart = 25)
+gk3 <- kmeans(data_gk_int, centers = 3, nstart = 25)
+gk4 <- kmeans(data_gk_int, centers = 4, nstart = 25)
+gk5 <- kmeans(data_gk_int, centers = 5, nstart = 25)
+
+# plots to compare
+gkp1 <- fviz_cluster(gk2, geom = "point",  data = data_gk_int) + ggtitle("k = 2")
+gkp2 <- fviz_cluster(gk3, geom = "point",  data = data_gk_int) + ggtitle("k = 3")
+gkp3 <- fviz_cluster(gk4, geom = "point",  data = data_gk_int) + ggtitle("k = 4")
+gkp4 <- fviz_cluster(gk5, geom = "point",  data = data_gk_int) + ggtitle("k = 5")
+
+library(gridExtra)
+grid.arrange(gkp1, gkp2, gkp3, gkp4, nrow = 2)
+```
+
+<h2> <b> Determine the Number of Clusters </b> </h2>
+
+```{r Determine the Number of Clusters GK, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
+# Determine number of clusters
+wss <- (nrow(data_gk_int)-1)*sum(apply(data_gk_int,2,var))
+
+for (i in 2:12) wss[i] <- sum(kmeans(data_gk_int,
+                                     centers=i)$withinss)
+plot(1:12, wss, type="b", xlab="Number of Clusters",ylab="Within groups sum of squares")
+
+```
+
+<h2> <b> Checking the Prediction Strength - Goalkeepers </b> </h2>
+
+```{r Prediction Strength GK, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
+prediction.strength(data_gk_int, Gmin=2, Gmax=15, M=10,cutoff=0.8)
+```
+
+<h2> <b> Output of the K-Means - Goalkeepers </b> </h2>
+
+```{r Output of the K-Means Goalkeeper, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
+#use the output of kmeans
+gk3$centers
+```
+
+
+
+
+<h1> <b> Cluster Analysis for Outfield Players </b> </h1>
+
+```{r Cluster Analysis for Outflied Players, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center', fig.height=20,fig.width=20}
+ok2 <- kmeans(data_outfield_int, centers = 2, nstart = 25)
+ok3 <- kmeans(data_outfield_int, centers = 3, nstart = 25)
+ok4 <- kmeans(data_outfield_int, centers = 4, nstart = 25)
+ok5 <- kmeans(data_outfield_int, centers = 5, nstart = 25)
+
+# plots to compare
+op1 <- fviz_cluster(ok2, geom = "point",  data = data_outfield_int) + ggtitle("k = 2")
+op2 <- fviz_cluster(ok3, geom = "point",  data = data_outfield_int) + ggtitle("k = 3")
+op3 <- fviz_cluster(ok4, geom = "point",  data = data_outfield_int) + ggtitle("k = 4")
+op4 <- fviz_cluster(ok5, geom = "point",  data = data_outfield_int) + ggtitle("k = 5")
+
+library(gridExtra)
+grid.arrange(op1, op2, op3, op4, nrow = 2)
+```
+
+<h2> <b> Determine the Number of Clusters - Outfield Players </b> </h2>
+
+```{r Determine the Number of Clusters Outfield Players, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center' }
+# Determine number of clusters
+wss_o <- (nrow(data_outfield_int)-1)*sum(apply(data_outfield_int,2,var))
+
+for (i in 2:12) wss_o[i] <- sum(kmeans(data_outfield_int,
+                                     centers=i)$withinss)
+plot(1:12, wss_o, type="b", xlab="Number of Clusters",ylab="Within groups sum of squares")
+
+```
+
+<h2> <b> Checking the Prediction Strength - Outfiled Players </b> </h2>
+
+```{r Prediction Strength Outfield, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center' }
+prediction.strength(data_outfield_int, Gmin=2, Gmax=15, M=10,cutoff=0.8)
+```
+
+<h2> <b> Output of the K-Means - Outfield Players </b> </h2>
+
+```{r Output of the K-Means Outfield Players, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
+#use the output of kmeans
+ok3$centers
+```
+
+
+
+
+
+### **Hierarchical Clustering**
+
+<h1> Defination  </h1>
+In data mining and statistics, hierarchical clustering (also called hierarchical cluster analysis or HCA) is a method of cluster analysis which seeks to build a hierarchy of clusters. 
+
+Strategies for hierarchical clustering generally fall into two types:
+
+1. Agglomerative: This is a "bottom-up" approach: each observation starts in its own cluster, and pairs of clusters are merged as one moves up the hierarchy.
+2. Divisive: This is a "top-down" approach: all observations start in one cluster, and splits are performed recursively as one moves down the hierarchy.
+
+In general, the merges and splits are determined in a greedy manner. The results of hierarchical clustering[2] are usually presented in a dendrogram.
+
+More Information can be found on [**Wikipedia**](https://en.wikipedia.org/wiki/Hierarchical_clustering)
+
+
+<h1> <b> Hierarchical Clustering Analysis for Goalkeepers </b> </h1>
+
+```{r Hierarchical Clustering Analysis for Goalkeepers, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center', fig.height=20,fig.width=20}
+#Wards Method or Hierarchical clustering
+#Calculate the distance matrix
+gk.dist = dist(data_gk_int)
+#Obtain clusters using the Wards method
+gk.hclust = hclust(gk.dist, method = "ward")
+
+plot(gk.hclust)
+
+rect.hclust(hclust(gk.dist, method = "ward"), h = 500)
+
+```
+
+
+<h1> <b> Hierarchical Clustering Analysis for Outfileld Players </b> </h1>
+
+```{r Hierarchical Clustering Analysis for Outfileld Players, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center', fig.height=20,fig.width=20}
+#Wards Method or Hierarchical clustering
+#Calculate the distance matrix
+outfield.dist = dist(data_outfield_int)
+#Obtain clusters using the Wards method
+outfield.hclust = hclust(outfield.dist, method = "ward")
+
+plot(outfield.hclust)
+
+rect.hclust(hclust(outfield.dist, method = "ward"), h = 4000)
+
+```
+
+
+## **Conclusion**
+
