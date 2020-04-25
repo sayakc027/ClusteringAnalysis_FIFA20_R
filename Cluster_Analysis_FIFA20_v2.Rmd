@@ -58,11 +58,18 @@ FIFA, also known as FIFA Football or FIFA Soccer, is a series of association foo
 
 Source: [**Wikipedia**](https://en.wikipedia.org/wiki/FIFA_(video_game_series))
 
+<hr>
+
 Data Source: [**Kaggle FIFA 20 Data Set**](https://www.kaggle.com/stefanoleone992/fifa-20-complete-player-dataset)
+
+<hr>
+
+</br>
+
 
 ![](FIFA 20 Image top 3.jpg)
 
-</hr>
+<hr>
 
 </br>
 
@@ -94,6 +101,8 @@ library(fpc)
 
 ```
 
+<hr>
+
 </br>
 
 <h3> Importing the Data </h3>
@@ -102,6 +111,8 @@ The data set was imported into R studio using the below code
 
 ```{r read the data, results='hide', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
 fifa_data <- read.csv("fifa-20-complete-player-dataset/players_20.csv", stringsAsFactors = FALSE)
+
+attach(fifa_data)
 ```
 
 </br>
@@ -141,13 +152,18 @@ glimpse(fifa_data)
 
 ```
 
+<hr>
 
+</br>
 
 <h1> <b> Data Cleaning - Splitting into 2 groups </b> </h1>
 <h1> <b> Goalkeepers and Outflied Players </b> </h1>
 
 Both goalkeepers and outfield players have different set of attributes. It makes more sense to divide the whole dataset into two groups: Outfield players and Goal keepers so that there are no Null values as we can assign only the attributes that are relevant to each group. This will also help us to align our model to our problem statement.
 
+<hr>
+
+</br>
 
 <h3> Data Set - Goalkeepers </h3>
 
@@ -156,6 +172,7 @@ data_gk <- subset(x=fifa_data, subset= player_positions == "GK", select = c(sofi
 
 ```
 
+</br>
 
 <h3> Analysing the Goalkeeper Dataset - Head, Dimension and Glimpse </h3>
 
@@ -165,6 +182,10 @@ dim(data_gk)
 glimpse(data_gk)
 
 ```
+
+<hr>
+
+</br>
 
 <h4> Observations: </h4>
 
@@ -190,6 +211,9 @@ glimpse(data_outfield)
 
 The Outfield dataset has 16242 observations and 53 variables.
 
+<hr>
+
+</br>
 
 <h2> Creating Data Sets for Goalkeepers and Outfield Players by only taking Physical, Strength and Skill Attritubes for clustering </h2>
 
@@ -209,6 +233,10 @@ glimpse(data_outfield_int)
 
 ```
 
+<hr>
+
+</br>
+
 <h2> Scaling the Dataframes </h2>
 
 Next as a part of Data Pre Processing we use the scale() function to basically normalize the datasets. This function places continuous variables on unit scale by subtracting the mean of the variable and dividing the result by the variable’s standard deviation (also sometimes called z-scoring or simply scaling). The result is that the values in the transformed variable have the same relationship to one another as in the untransformed variable, but the transformed variable has mean 0 and standard deviation.
@@ -225,6 +253,96 @@ set.seed(123456)
 
 ## **EDA**
 
+Sometimes same player takes over several positions, sometimes only one like a goal keeper. Also notice that names of positions separated by comma and space if several are present. What we can do here is to display for each player it's relative relation to a position. This can be accomplished in few steps.
+
+* We remove white spaces from all cells in player_positions column.
+* We separate any string in the cell by comma if there any comma present.
+* We transform column into a matrix N x n where N - number of rows in the data (total number of rows present in the table) and n is the total number of unique attributes found in the column. 
+
+In our case we have 15 attributes, so the table will be N x 15.
+
+```{r Players Positions, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center' }
+
+print ("Players position")
+head (player_positions)
+
+player_positions <- gsub('\\s+', '',player_positions)#remove white spaces from specified columns
+players_role <- mtabulate(strsplit(player_positions, ",")) #one hot encode player position
+
+print ("Number of entries (rows) and number of (columns) of the matrix")
+dim (players_role)
+```
+
+<h2> Frquency of Positions Played </h2>
+
+```{r Frequency of players played, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'  }
+role_frequency <- t(sort(apply (players_role, 2, sum))) #count number of players position appearing
+
+role_frequency <- gather (data.frame(role_frequency), Position, Count) #transfer data into format for ggplot
+
+role_frequency$Position <- reorder(role_frequency$Position, role_frequency$Count)#reorder position by ascending count
+
+#barplot of players position frequency
+
+ggplot(role_frequency, aes(x=Position, y = Count, fill = Position)) + 
+  geom_bar(stat = "identity", color ="black", fill = "#B03A2E") + 
+  coord_flip() +
+  theme_minimal() +
+  geom_text(aes(label = Count, hjust = 1, color = "#FDFEFE" , size = 3.5)) +
+  ggtitle("Frequency of Positions Played") +
+  xlab("Player Positions") + 
+  ylab("Count") +
+  theme(legend.position = "none",
+        plot.title = element_text(color = "black", size = 14, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(color = "darkblue", hjust = 0.5),
+        axis.title.y = element_text(),
+        axis.title.x = element_text(),
+        axis.ticks = element_blank())
+
+  
+
+```
+
+
+
+<hr>
+</br>
+
+<h2> Correlation amongst outfield players </h2>
+
+To see correlation between values in the table (players_role) we can compute correlation between them by applying function cor. It requires only numeric columns, make sure you do not have any rows with string inside.
+
+We can plot corrplot using corrplot function of corrplot package. One can specify various arguments of a function. corrplot:: specifies the namespace of a package. It can be helpful when two packages have different function but share same function name.
+
+```{r Position Correalation, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'  }
+
+role_cor <- cor(players_role) #correlation between players role
+
+corrplot::corrplot(role_cor, hclust.method = "ward.D", order = "hclust", method = "square", diag = F, type = "lower" ) #correlation plot
+
+```
+
+<h4> Observation: </h4>
+We can see that mid center players often share position of a center defending midfielder and less with center attacking midfielder. Left and right back wingers clearly have positive correlation so as right and left mid-siders.
+
+It seems that central forward position (ST) is negatively correlated with (CM - Central middle, CDM - Central defense middle, CB - Central backfielder, RB - right backfielder) a little less with LB - left backfielder. Clearly players playing in the forward position rarely play in the defense
+
+
+<h2> Correrlation of key statistics from Outfield dataframes: </h2>
+
+```{r Skill Correlation, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center' }
+data_outfield_Summary <- subset(x=data_outfield, select = c(age,height_cm,weight_kg, overall, potential,pace,shooting,passing,dribbling,defending,physic))
+
+corr1 <- cor(data_outfield_Summary)
+corrplot::corrplot(corr1, hclust.method = "ward.D", order = "hclust", method = "square",diag = F, type = "lower" ) #correlation plot for Outfield Players
+
+
+#chart.Correlation(data_outfield_Summary, histogram=TRUE, pch=19)
+
+```
+
+
+
 
 ## **Cluster Analaysis** {.tabset .tabset-fade .tabset-pills}
 
@@ -233,15 +351,29 @@ Cluster analysis or clustering is the task of grouping a set of objects in such 
 
 More Information can be found on [**Wikipedia**](https://en.wikipedia.org/wiki/Cluster_analysis)
 
+<hr>
+
+</br>
+
 ### **K-Means Clustering**
 
 <h2> Definition </h2>
 K-Means Clustering is a method of vector quantization, originally from signal processing, that aims to partition n observations into k clusters in which each observation belongs to the cluster with the nearest mean (cluster centers or cluster centroid), serving as a prototype of the cluster. This results in a partitioning of the data space into Voronoi cells. It is popular for cluster analysis in data mining. k-means clustering minimizes within-cluster variances (squared Euclidean distances), but not regular Euclidean distances, which would be the more difficult Weber problem: the mean optimizes squared errors, whereas only the geometric median minimizes Euclidean distances. For instance, Better Euclidean solutions can be found using k-medians and k-medoids.
 
+</br>
+
 More Information can be found on [**Wikipedia**](https://en.wikipedia.org/wiki/K-means_clustering)
+
+<hr>
+
+</br>
 
 
 We want to view the result so We can use ```fviz_cluster```. It is function can provide a nice graph of the clusters. Usually, we have more than two dimensions (variables) ```fviz_cluster will perform principal component analysis (PCA)``` and plot the data points according to the first two principal components that explain the majority of the variance.
+
+<hr>
+
+</br>
 
 <h1> <b> Cluster Analysis for Goalkeepers </b> </h1>
 
@@ -265,6 +397,10 @@ library(gridExtra)
 grid.arrange(gkp1, gkp2, gkp3, gkp4, nrow = 2)
 ```
 
+<hr>
+
+</br>
+
 <h2> <b> Determine the Number of Clusters </b> </h2>
 
 To determine the number of clusters, we use a simple within group sum of squares method. The idea is that, if the plot is an arm, the elbow of the arm is the optimal number of clusters, which is 3 in our case
@@ -279,6 +415,10 @@ plot(1:12, wss, type="b", xlab="Number of Clusters",ylab="Within groups sum of s
 
 ```
 
+<hr>
+
+</br>
+
 <h2> <b> Checking the Prediction Strength - Goalkeepers </b> </h2>
 
 Next we use the prediction strength with a cutoff value of 0.8. This will recommends the largest number of clusters that leads to a prediction strength above 0.8 which is again 3 in our case.
@@ -287,6 +427,10 @@ Next we use the prediction strength with a cutoff value of 0.8. This will recomm
 prediction.strength(data_gk_int, Gmin=2, Gmax=15, M=10,cutoff=0.8)
 ```
 
+<hr>
+
+</br>
+
 <h2> <b> Output of the K-Means - Goalkeepers </b> </h2>
 
 ```{r Output of the K-Means Goalkeeper, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
@@ -294,8 +438,11 @@ prediction.strength(data_gk_int, Gmin=2, Gmax=15, M=10,cutoff=0.8)
 gk3$centers
 ```
 
+<hr>
 
+</br>
 
+</br>
 
 <h1> <b> Cluster Analysis for Outfield Players </b> </h1>
 
@@ -317,6 +464,10 @@ library(gridExtra)
 grid.arrange(op1, op2, op3, op4, nrow = 2)
 ```
 
+<hr>
+
+</br>
+
 <h2> <b> Determine the Number of Clusters - Outfield Players </b> </h2>
 
 Using the sum of squares method method, we find the optimal number of clusters to be 3.
@@ -331,6 +482,10 @@ plot(1:12, wss_o, type="b", xlab="Number of Clusters",ylab="Within groups sum of
 
 ```
 
+<hr>
+
+</br>
+
 <h2> <b> Checking the Prediction Strength - Outfiled Players </b> </h2>
 
 Using prediction strength function with a cut-off value of 0.8, we get the largest number of clusters to be 3.
@@ -338,6 +493,10 @@ Using prediction strength function with a cut-off value of 0.8, we get the large
 ```{r Prediction Strength Outfield, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center' }
 prediction.strength(data_outfield_int, Gmin=2, Gmax=15, M=10,cutoff=0.8)
 ```
+
+<hr>
+
+</br>
 
 <h2> <b> Output of the K-Means - Outfield Players </b> </h2>
 
@@ -347,8 +506,9 @@ ok3$centers
 ```
 
 
+<hr>
 
-
+</br>
 
 ### **Hierarchical Clustering**
 
@@ -362,7 +522,13 @@ Strategies for hierarchical clustering generally fall into two types:
 
 In general, the merges and splits are determined in a greedy manner. The results of hierarchical clustering[2] are usually presented in a dendrogram.
 
+</br>
+
 More Information can be found on [**Wikipedia**](https://en.wikipedia.org/wiki/Hierarchical_clustering)
+
+<hr>
+
+</br>
 
 
 <h1> <b> Hierarchical Clustering Analysis for Goalkeepers </b> </h1>
@@ -379,6 +545,11 @@ plot(gk.hclust)
 rect.hclust(hclust(gk.dist, method = "ward"), h = 500)
 
 ```
+
+
+<hr>
+
+</br>
 
 
 <h1> <b> Hierarchical Clustering Analysis for Outfileld Players </b> </h1>
@@ -409,13 +580,18 @@ In bottom-up hierarchical clustering, we start with each data item having its ow
 
 In k-means clustering, we try to identify the best way to divide the data into k sets simultaneously. A good approach is to take k items from the data set as initial cluster representatives, assign all items to the cluster whose representative is closest, and then calculate the cluster mean as a new representative; until it converges (all clusters stay the same)
 
-Reference: [**SteupAnalytics.com**](https://stepupanalytics.com/difference-between-k-means-clustering-and-hierarchical-clustering/)
+Reference: [**StepupAnalytics.com**](https://stepupanalytics.com/difference-between-k-means-clustering-and-hierarchical-clustering/)
+
+<hr>
+
+</br>
+
 
 <h2> Comparing kmeans() and hclust() </h2>
 
 <h3> Goalkeepers </h3>
 
-```{r Comparing kmeans and hclust goalkeepers, }
+```{r Comparing kmeans and hclust goalkeepers, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'  }
 
 # Apply cutree() to gk.hclust : gk.cut
 gk.cut <- cutree(gk.hclust , k = 4)
@@ -425,9 +601,13 @@ table(gk3$cluster, gk.cut)
 
 ```
 
+<hr>
+
+</br>
+
 <h3> Outfiled Players </h3>
 
-```{r Comparing kmeans and hclust outfield players, }
+```{r Comparing kmeans and hclust outfield players, results='markup', echo=TRUE, message=FALSE, warning=FALSE, fig.align='center'}
 
 # Apply cutree() to gk.hclust : gk.cut
 outfield.cut <- cutree(outfield.hclust  , k = 3)
@@ -437,18 +617,34 @@ table(ok3$cluster, outfield.cut)
 
 ```
 
+<hr>
+
+</br>
+
 ## **Conclusion**
 
 <h2> Summary of The Problem </h2>
 
 In professional football, it is not uncommon for a player to drop out of team due to contract transfer, contract expiration or medical reasons. By the means of our analysis, we tried to find suitable replacements players based on their skillset, strength and physical attributes. We performed Clustering Analysis which, an unsupervised learning method and built two different models using K-means clustering and Hierarchical clustering and in the end compared both the models to see which one performs better.
 
+<hr>
+
+</br>
+
 <h2> Methodology </h2>
 
 The methodology involved cleaning the dataset and then splitting it in 2 parts - Goalkeeprs and Outfield Players. And then by only taking the physical attributes into consideration , performing clustering analysis - K mean Cluster Analysis and Hierarchical Analysis on both of the datasets separately to cluster similar physical type of player together and making it easier for the team management to find a suitable replacement in case of contract transfer, contract expiration or medical reasons.
+
+<hr>
+
+</br>
 
 
 <h2> Implication of the Analysis </h2>
 
 This will be useful for team management as it will narrow down their search for a suitable replacement.
 
+
+<hr>
+
+</br>

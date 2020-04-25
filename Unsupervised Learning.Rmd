@@ -1,0 +1,268 @@
+---
+title: "Unsupervised Learning"
+author: "Rohit"
+date: "4/20/2020"
+output: html_document
+---
+
+
+## 1. Packages Required
+The below packages were used to complete the analysis.
+
+```{r}
+library (tidyverse) 
+library (ggfortify)
+library (qdapTools)
+library (caret)
+library (tidyr)
+library (corrplot)
+library (ggpubr)
+library(ggplot2)
+library(PerformanceAnalytics)
+
+```
+
+
+
+## 2. Initial Data Exploration
+
+### 2.1 Reading in files
+The data set was imported into R studio using the below code
+
+```{r}
+data <- read.csv("players_20.csv", stringsAsFactors = FALSE)
+
+attach(data)
+```
+
+### 2.2 Check the structure of data set
+
+Before we begin exploring the data, we use str() & head()function to see the structure and dimensions of the dataset.
+
+```{r}
+head (data) #display head of the data
+```
+
+```{r}
+
+str(data)
+```
+
+
+### 2.3 Deep Dive into Data
+
+### 2.3.1 Plotting replationships using Simple Plot
+
+```{r}
+
+plot (overall, age, xlab = "Overall", ylab = "Age", main = "Player overall performance and age relationship") #overall performance vs the age 
+
+plot (potential, age, xlab = "Potential", ylab = "Age", main = "Player potential performance and age relationship") #potentiall performance vs the age
+
+plot (height_cm, dribbling, xlab = "Height", ylab = "Dribbling", main = "Player Height and Dribbling ability relationship") #Height in cm vs Dribbling ability
+
+plot (weight_kg, pace, xlab = "Weight", ylab = "Pace", main = "Player Weight and Pace relationship") #Weight in  kg vs Pace
+
+plot (height_cm, attacking_heading_accuracy, xlab = "Height", ylab = "Heading Accuracy", main = "Player Height and Heading Accuracy relationship") #Height in cm vs Heading Accuracy
+
+plot (weight_kg, power_strength, xlab = "Weight", ylab = "Strength", main = "Player Weight and Strength relationship") #Weight in  kg vs Strength
+
+plot (overall, mentality_penalties, xlab = "Overall", ylab = "Penalty", main = "Player overall performance and Penalty Taking relationship") #overall performance vs penalty 
+
+```
+
+Observations: 
+From plots above we can notice that players older 25 rarely have overall performance of below 53.
+Height has negative correlation with Dribbling ability
+Weight has negative correlation with pace
+Height has positive correlation with Heading Accuracy
+Weight has positive correlation with Physical Strength
+
+
+
+### 2.3.2 Players according to position
+```{r}
+print ("Players position")
+head (player_positions)
+
+```
+
+
+Sometimes same player takes over several positions, sometimes only one like a goal keeper. Also notice that names of positions separated by comma and space if several are present. What we can do here is to display for each player it's relative relation to a position. This can be accomplished in few steps.
+We remove white spaces from all cells in player_positions column.
+We separate any string in the cell by comma if there any comma present.
+We transform column into a matrix N x n where N - number of rows in the data (total number of rows present in the table) and n is the total number of unique attributes found in the column. In our case we have 15 attributes, so the table will be N x 15.
+
+```{r}
+
+
+player_positions <- gsub('\\s+', '',player_positions)#remove white spaces from specified columns
+players_role <- mtabulate(strsplit(player_positions, ",")) #one hot encode player position
+
+print ("Number of entries (rows) and number of (columns) of the matrix")
+dim (players_role)
+```
+
+```{r}
+role_frequency <- t(sort(apply (players_role, 2, sum))) #count number of players position appearing
+role_frequency <- gather (data.frame(role_frequency), Position, Count) #transfer data into format for ggplot
+role_frequency$Position <- reorder(role_frequency$Position, role_frequency$Count)#reorder position by ascending count
+ggplot(role_frequency, aes(x=Position, y = Count, fill = Position)) + geom_bar(stat = "identity") + ggtitle("Frequency of Positions Played")#barplot of players position frequency
+
+```
+
+Observation:
+It is clear that right and left back wingers were the least popular among players while back mid and forward center positions were the most popular positions.
+
+
+
+
+To see correlation between values in the table (players_role) we can compute correlation between them by applying function cor. It requires only numeric columns, make sure you do not have any rows with string inside.
+
+We can plot corrplot using corrplot function of corrplot package. One can specify various arguments of a function. corrplot:: specifies the namespace of a package. It can be helpful when two packages have different function but share same function name.
+```{r}
+
+role_cor <- cor(players_role) #correlation between players role
+corrplot::corrplot(role_cor, hclust.method = "ward.D", order = "hclust", method = "square",diag = F, type = "lower" ) #correlation plot
+
+```
+
+Observation:
+We can see that mid center players often share position of a center defending midfielder and less with center attacking midfielder. Left and right back wingers clearly have positive correlation so as right and left mid-siders.
+
+It seems that central forward position (ST) is negatively correlated with (CM - Central middle, CDM - Central defense middle, CB - Central backfielder, RB - right backfielder) a little less with GK - goal keeper and LB - left backfielder. Clearly players playing in the forward position rarely play in the defense
+
+
+
+
+### 2.4 Data Cleaning - Splitting into two groups
+
+If we divide the whole dataset into two groups - Outfield players and Goalkeepers then there would be no Null values as we can assign attributes relevant to a GK and outfield players.
+
+This will also help us to align our model to our problem statement
+
+```{r}
+data_gk <- subset(x=data, subset= player_positions == "GK", select = c(sofifa_id,short_name,age,height_cm,weight_kg,overall,potential,value_eur,wage_eur,player_positions,international_reputation,weak_foot,skill_moves,gk_diving,gk_handling,gk_kicking,gk_reflexes,gk_speed,gk_positioning,attacking_crossing,attacking_finishing,attacking_heading_accuracy,attacking_short_passing,attacking_volleys,skill_dribbling,skill_curve,skill_fk_accuracy,skill_long_passing,skill_ball_control,movement_acceleration,movement_sprint_speed,movement_agility,movement_reactions,movement_balance,power_shot_power,power_jumping,power_stamina,power_strength,power_long_shots,mentality_aggression,mentality_interceptions,mentality_positioning,mentality_vision,mentality_penalties,mentality_composure,defending_marking,defending_standing_tackle,defending_sliding_tackle,goalkeeping_diving,goalkeeping_handling,goalkeeping_kicking,goalkeeping_positioning,goalkeeping_reflexes))
+head(data_gk)
+dim(data_gk)
+
+data_outfield <- subset(x=data, subset= player_positions != "GK", select = c(sofifa_id,short_name,age,height_cm,weight_kg,overall,potential,value_eur,wage_eur,player_positions,international_reputation,weak_foot,skill_moves,pace,shooting,passing,dribbling,defending,physic,attacking_crossing,attacking_finishing,attacking_heading_accuracy,attacking_short_passing,attacking_volleys,skill_dribbling,skill_curve,skill_fk_accuracy,skill_long_passing,skill_ball_control,movement_acceleration,movement_sprint_speed,movement_agility,movement_reactions,movement_balance,power_shot_power,power_jumping,power_stamina,power_strength,power_long_shots,mentality_aggression,mentality_interceptions,mentality_positioning,mentality_vision,mentality_penalties,mentality_composure,defending_marking,defending_standing_tackle,defending_sliding_tackle,goalkeeping_diving,goalkeeping_handling,goalkeeping_kicking,goalkeeping_positioning,goalkeeping_reflexes))
+head(data_outfield)
+dim(data_outfield)
+```
+
+
+
+Correrlation of key statistics from GK and Outfield dataframes:
+
+```{r}
+data_outfield_Summary <- subset(x=data_outfield, select = c(age,height_cm,weight_kg, overall, potential,pace,shooting,passing,dribbling,defending,physic))
+
+corr1 <- cor(data_outfield_Summary)
+corrplot::corrplot(corr1, hclust.method = "ward.D", order = "hclust", method = "square",diag = F, type = "lower" ) #correlation plot for Outfield Players
+
+data_gk_Summary <- subset(x=data_gk, select = c(age,height_cm,weight_kg, overall, potential,gk_diving,gk_handling,gk_kicking,gk_reflexes,gk_speed,gk_positioning))
+
+corr2 <- cor(data_gk_Summary)
+corrplot::corrplot(corr2, hclust.method = "ward.D", order = "hclust", method = "square",diag = F, type = "lower" ) #correlation plot for GK
+
+#chart.Correlation(data_outfield_Summary, histogram=TRUE, pch=19)
+
+```
+
+
+# EDA NEW 
+
+### Checking Null values for Oulfield players and Goalkeeper data separately
+
+```{r}
+count_outfield <- is.na(data_outfield)
+
+
+sum(count_outfield)
+
+
+count_gk <- is.na(data_gk)
+
+
+sum(count_gk)
+
+```
+
+Observations: 
+
+After splitting the data into two - Oufield players and Goalkeepers we can see that there are no null values and we get a cleaner data to work on with no abnormalities
+
+
+### Outfield players according to position
+
+Sometimes same player takes over several positions, sometimes only one like a goal keeper. Also notice that names of positions separated by comma and space if several are present. What we can do here is to display for each player it's relative relation to a position. This can be accomplished in few steps.
+We remove white spaces from all cells in player_positions column.
+We separate any string in the cell by comma if there any comma present.
+We transform column into a matrix N x n where N - number of rows in the data (total number of rows present in the table) and n is the total number of unique attributes found in the column. In our case we have 15 attributes, so the table will be N x 15.
+
+```{r}
+player_positions <- gsub('\\s+', '',data_outfield$player_positions)#remove white spaces from specified columns
+players_role <- mtabulate(strsplit(player_positions, ",")) #one hot encode player position
+
+print ("Number of entries (rows) and number of (columns) of the matrix")
+dim (players_role)
+
+role_frequency <- t(sort(apply (players_role, 2, sum))) #count number of players position appearing
+role_frequency <- gather (data.frame(role_frequency), Position, Count) #transfer data into format for ggplot
+role_frequency$Position <- reorder(role_frequency$Position, role_frequency$Count)#reorder position by ascending count
+ggplot(role_frequency, aes(x=Position, y = Count, fill = Position)) + geom_bar(stat = "identity") + ggtitle("Frequency of Positions Played")#barplot of players position frequency
+
+
+```
+Observation:
+It is clear that right and left back wingers were the least popular among players while back mid and forward center positions were the most popular positions.
+
+
+### Correlation amongst outfield players
+
+To see correlation between values in the table (players_role) we can compute correlation between them by applying function cor. It requires only numeric columns, make sure you do not have any rows with string inside.
+
+We can plot corrplot using corrplot function of corrplot package. One can specify various arguments of a function. corrplot:: specifies the namespace of a package. It can be helpful when two packages have different function but share same function name.
+
+```{r}
+
+role_cor <- cor(players_role) #correlation between players role
+corrplot::corrplot(role_cor, hclust.method = "ward.D", order = "hclust", method = "square",diag = F, type = "lower" ) #correlation plot
+
+```
+
+Observation:
+We can see that mid center players often share position of a center defending midfielder and less with center attacking midfielder. Left and right back wingers clearly have positive correlation so as right and left mid-siders.
+
+It seems that central forward position (ST) is negatively correlated with (CM - Central middle, CDM - Central defense middle, CB - Central backfielder, RB - right backfielder) a little less with LB - left backfielder. Clearly players playing in the forward position rarely play in the defense
+
+
+### Correrlation of key statistics from Outfield dataframes:
+
+```{r}
+data_outfield_Summary <- subset(x=data_outfield, select = c(age,height_cm,weight_kg, overall, potential,pace,shooting,passing,dribbling,defending,physic))
+
+corr1 <- cor(data_outfield_Summary)
+corrplot::corrplot(corr1, hclust.method = "ward.D", order = "hclust", method = "square",diag = F, type = "lower" ) #correlation plot for Outfield Players
+
+
+#chart.Correlation(data_outfield_Summary, histogram=TRUE, pch=19)
+
+```
+
+
+### Things I tried for bar plot
+
+```{r}
+
+no_gk <- count(data_gk)
+no_op <- count(data_outfield)
+
+total <- data.frame(no_gk,no_op)
+total
+
+barplot(table(total), main="Player Distribution",xlab="Number of Players", beside = )
+
+
+```
