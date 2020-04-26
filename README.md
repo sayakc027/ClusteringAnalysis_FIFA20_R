@@ -1,3 +1,12 @@
+<style>
+body {
+        text-align: justify;
+        font-family: "Bookman", Bookman;
+        font-size: 14pt;
+     }
+</style>
+
+
 # Unsupervised Learning - FIFA 20
 #### Cluster Analysis on EA FIFA 20 Data Set
 
