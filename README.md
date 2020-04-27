@@ -1,7 +1,7 @@
 # Unsupervised Learning - FIFA 20
 #### Cluster Analysis on EA FIFA 20 Data Set
 
-## RPubs Link:
+## RPubs Link: https://rpubs.com/SayakChakraborty/ClusterAnalysisFIFA20
 
 #### Summary of The Problem
 In professional football, it is not uncommon for a player to drop out of team due to contract transfer, contract expiration or medical reasons. By the means of our analysis, we tried to find suitable replacements players based on their skillset, strength and physical attributes. We performed Clustering Analysis which, an unsupervised learning method and built two different models using K-means clustering and Hierarchical clustering and in the end compared both the models to see which one performs better.
