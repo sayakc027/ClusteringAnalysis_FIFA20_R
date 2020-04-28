@@ -2,10 +2,7 @@
 title: <center> <b> Unsupervised Learning - FIFA 20 </b> </center>
 subtitle: <center> <b> Cluster Analysis on EA FIFA 20 Data Set </b> </center>
 author: <center> Sayak Chakraborty | Samreen Zehra | Niharika Gupta | Rohit Thakur </center>
-output:
-  html_document: 
-    code_folding: show
-always_allow_html: yes
+output: word_document
 ---
 
 <style>
