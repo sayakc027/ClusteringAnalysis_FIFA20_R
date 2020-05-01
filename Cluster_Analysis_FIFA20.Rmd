@@ -71,7 +71,7 @@ Data Source: [**Kaggle FIFA 20 Data Set**](https://www.kaggle.com/stefanoleone99
 </br>
 
 
-![](FIFA 20 Image top 3.jpg)
+![](Images/FIFA 20 Image top 3.jpg)
 
 <hr>
 
